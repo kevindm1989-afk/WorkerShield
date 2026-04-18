@@ -1,0 +1,8 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "L0c-5p58azZVVShM0wn_j"
+uri = "file://artifacts/workershield/assets/images/icon.png"
+type = "image"
+title = "WorkerShield app icon"
