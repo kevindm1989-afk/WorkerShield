@@ -18,7 +18,15 @@
     },
     "android": {},
     "web": {
-      "favicon": "./assets/images/icon.png"
+      "favicon": "./assets/images/icon.png",
+      "name": "WorkerShield",
+      "shortName": "WorkerShield",
+      "description": "Ontario labour defense AI for Unifor Local 1285 union stewards and JHSC co-chairs",
+      "themeColor": "#D4A017",
+      "backgroundColor": "#0B0F14",
+      "display": "standalone",
+      "orientation": "portrait",
+      "lang": "en-CA"
     },
     "plugins": [
       [

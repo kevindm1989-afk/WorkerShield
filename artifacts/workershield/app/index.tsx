@@ -26,12 +26,17 @@ import {
   type VoiceSession,
 } from "@/lib/voice";
 import { exportFinalAsPdf } from "@/lib/pdf";
+import { copyFullReport } from "@/lib/clipboard";
 import { CopyButton } from "@/components/CopyButton";
 import {
   Onboarding,
   OnboardingLoader,
   useOnboarding,
 } from "@/components/Onboarding";
+import { IncidentLogger } from "@/components/IncidentLogger";
+import { InstallBanner } from "@/components/InstallBanner";
+
+type AppTab = "main" | "incidents";
 
 type Role = "Both Roles" | "Steward" | "JHSC";
 
@@ -42,10 +47,139 @@ export default function HomeScreen() {
   if (onboarding.status === "loading") return <OnboardingLoader />;
   if (onboarding.status === "needed")
     return <Onboarding onDone={onboarding.markDone} />;
-  return <Main />;
+  return <AppShell />;
 }
 
-function Main() {
+function AppShell() {
+  const colors = useColors();
+  const insets = useSafeAreaInsets();
+  const [tab, setTab] = useState<AppTab>("main");
+  const [prefillProblem, setPrefillProblem] = useState<string | null>(null);
+
+  const handleSendToWorkerShield = useCallback((text: string) => {
+    setPrefillProblem(text);
+    setTab("main");
+  }, []);
+
+  const TAB_BAR_H = 56 + insets.bottom;
+
+  return (
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <InstallBanner />
+      <View style={{ flex: 1 }}>
+        <View style={{ flex: 1, display: tab === "main" ? "flex" : "none" }}>
+          <Main
+            prefillProblem={prefillProblem}
+            onPrefillConsumed={() => setPrefillProblem(null)}
+            extraBottomPad={TAB_BAR_H}
+          />
+        </View>
+        <View
+          style={{ flex: 1, display: tab === "incidents" ? "flex" : "none" }}
+        >
+          <IncidentLogger onSendToWorkerShield={handleSendToWorkerShield} />
+        </View>
+      </View>
+      <View
+        style={[
+          tabBarStyles.bar,
+          {
+            height: TAB_BAR_H,
+            backgroundColor: colors.card,
+            borderTopColor: colors.border,
+            paddingBottom: insets.bottom,
+          },
+        ]}
+      >
+        {(["main", "incidents"] as AppTab[]).map((t) => {
+          const active = tab === t;
+          const label = t === "main" ? "AI ANALYSIS" : "INCIDENT LOG";
+          const icon = t === "main" ? "⚡" : "📋";
+          return (
+            <Pressable
+              key={t}
+              onPress={() => {
+                Haptics.selectionAsync().catch(() => {});
+                setTab(t);
+              }}
+              style={({ pressed }) => [
+                tabBarStyles.tabBtn,
+                { opacity: pressed ? 0.7 : 1 },
+              ]}
+            >
+              <Text
+                style={[
+                  tabBarStyles.tabIcon,
+                  { color: active ? colors.primary : colors.mutedForeground },
+                ]}
+              >
+                {icon}
+              </Text>
+              <Text
+                style={[
+                  tabBarStyles.tabLabel,
+                  { color: active ? colors.primary : colors.mutedForeground },
+                ]}
+              >
+                {label}
+              </Text>
+              {active && (
+                <View
+                  style={[
+                    tabBarStyles.tabIndicator,
+                    { backgroundColor: colors.primary },
+                  ]}
+                />
+              )}
+            </Pressable>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
+const tabBarStyles = StyleSheet.create({
+  bar: {
+    flexDirection: "row",
+    borderTopWidth: 1,
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+  },
+  tabBtn: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 2,
+    position: "relative",
+  },
+  tabIcon: {
+    fontSize: 20,
+  },
+  tabLabel: {
+    fontSize: 8,
+    fontFamily: "Inter_800ExtraBold",
+    letterSpacing: 1,
+  },
+  tabIndicator: {
+    position: "absolute",
+    top: 0,
+    left: 16,
+    right: 16,
+    height: 2,
+    borderRadius: 1,
+  },
+});
+
+interface MainProps {
+  prefillProblem?: string | null;
+  onPrefillConsumed?: () => void;
+  extraBottomPad?: number;
+}
+
+function Main({ prefillProblem, onPrefillConsumed, extraBottomPad = 0 }: MainProps) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
 
@@ -68,6 +202,8 @@ function Main() {
 
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
+  const [copyingFull, setCopyingFull] = useState(false);
+  const copyFullTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const pipelineRef = useRef<PipelineController | null>(null);
@@ -75,6 +211,21 @@ function Main() {
   const finalArrivedRef = useRef(false);
 
   const scrollRef = useRef<ScrollView>(null);
+
+  useEffect(
+    () => () => {
+      if (copyFullTimerRef.current) clearTimeout(copyFullTimerRef.current);
+    },
+    [],
+  );
+
+  useEffect(() => {
+    if (prefillProblem) {
+      setProblem(prefillProblem);
+      onPrefillConsumed?.();
+      scrollRef.current?.scrollTo({ y: 0, animated: true });
+    }
+  }, [prefillProblem]);
 
   useEffect(
     () => () => {
@@ -150,13 +301,33 @@ function Main() {
         role,
         problem,
         finalMarkdown: finalOut,
+        agentOutputs: agents
+          .filter((a) => a.output)
+          .map((a) => ({ label: a.label, output: a.output ?? "" })),
       });
     } catch (e) {
       setExportError(e instanceof Error ? e.message : "Export failed");
     } finally {
       setExporting(false);
     }
-  }, [finalOut, exporting, local, employer, role, problem]);
+  }, [finalOut, exporting, local, employer, role, problem, agents]);
+
+  const handleCopyFull = useCallback(async () => {
+    if (!finalOut || copyingFull) return;
+    setCopyingFull(true);
+    await copyFullReport({
+      local,
+      employer,
+      role,
+      problem,
+      agentOutputs: agents
+        .filter((a) => a.output)
+        .map((a) => ({ label: a.label, output: a.output ?? "" })),
+      finalMarkdown: finalOut,
+    });
+    if (copyFullTimerRef.current) clearTimeout(copyFullTimerRef.current);
+    copyFullTimerRef.current = setTimeout(() => setCopyingFull(false), 1800);
+  }, [finalOut, copyingFull, local, employer, role, problem, agents]);
 
   const updateAgent = useCallback(
     (key: string, label: string, patch: Partial<AgentState>) => {
@@ -316,7 +487,7 @@ function Main() {
       style={{ flex: 1, backgroundColor: colors.background }}
       contentContainerStyle={{
         paddingTop: insets.top + 8,
-        paddingBottom: insets.bottom + 32,
+        paddingBottom: insets.bottom + 32 + extraBottomPad,
       }}
       keyboardShouldPersistTaps="handled"
     >
@@ -707,9 +878,37 @@ function Main() {
                     { color: colors.primaryForeground },
                   ]}
                 >
-                  ⤓ SAVE AS PDF
+                  ⤓ EXPORT FULL PDF
                 </Text>
               )}
+            </Pressable>
+            <Pressable
+              onPress={handleCopyFull}
+              disabled={copyingFull}
+              style={({ pressed }) => [
+                styles.finalActionBtn,
+                {
+                  borderColor: copyingFull ? colors.success : colors.primary,
+                  backgroundColor: copyingFull
+                    ? colors.success
+                    : pressed
+                      ? colors.card
+                      : "transparent",
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.finalActionText,
+                  {
+                    color: copyingFull
+                      ? colors.primaryForeground
+                      : colors.primary,
+                  },
+                ]}
+              >
+                {copyingFull ? "✓ FULL REPORT COPIED" : "⎘ COPY FULL REPORT"}
+              </Text>
             </Pressable>
             <Pressable
               onPress={reset}

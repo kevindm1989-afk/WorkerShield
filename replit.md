@@ -27,7 +27,7 @@ Endpoint: `POST /api/agent/run` (file `artifacts/api-server/src/routes/agent.ts`
 Model: `claude-sonnet-4-5`, max_tokens 1500. Uses the user's own `ANTHROPIC_API_KEY` env var directly (no Replit AI proxy).
 
 ### Mobile App
-- Single screen: `artifacts/workershield/app/index.tsx`
+- Two-tab shell: `artifacts/workershield/app/index.tsx`
 - SSE streaming consumer: `artifacts/workershield/lib/agentClient.ts` (uses `expo/fetch`)
 - Markdown renderer: `artifacts/workershield/components/Markdown.tsx` + `lib/markdown.ts`
 - Agent status chips with pulse animation: `artifacts/workershield/components/AgentChip.tsx`
