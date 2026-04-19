@@ -1,0 +1,2080 @@
+<!DOCTYPE html>
+<html lang="en-CA">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>WorkerShield</title>
+
+  <!-- PWA meta -->
+  <meta name="theme-color" content="#0a1628">
+  <meta name="application-name" content="WorkerShield">
+  <meta name="description" content="Ontario labour defense AI for Unifor Local 1285">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="WorkerShield">
+  <link rel="manifest" id="manifest-link">
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- jsPDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --navy: #0a1628;
+      --navy2: #0f1f3d;
+      --navy3: #162644;
+      --gold: #d4a017;
+      --gold-dim: #a87c12;
+      --gold-bright: #f0b820;
+      --text: #e8ecf1;
+      --text-dim: #8a95a5;
+      --border: #1e2e4a;
+      --card: #0f1f3d;
+      --red: #e5484d;
+      --amber: #f59e0b;
+      --green: #22c55e;
+      --blue: #3b82f6;
+      --orange: #f97316;
+      --tab-h: 64px;
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--navy);
+      color: var(--text);
+      font-family: 'IBM Plex Sans', sans-serif;
+      font-size: 14px;
+      line-height: 1.5;
+      overflow: hidden;
+    }
+
+    #app {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      max-width: 600px;
+      margin: 0 auto;
+      position: relative;
+    }
+
+    /* ── BANNERS ── */
+    #deadline-banner, #install-banner {
+      display: none;
+      padding: 10px 16px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      line-height: 1.4;
+    }
+    #deadline-banner {
+      background: var(--red);
+      color: #fff;
+    }
+    #deadline-banner.show { display: block; }
+    #install-banner {
+      background: var(--gold);
+      color: var(--navy);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    #install-banner.show { display: flex; }
+    #install-banner span { flex: 1; }
+    .banner-btn {
+      background: var(--navy);
+      color: var(--gold);
+      border: none;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      padding: 6px 10px;
+      cursor: pointer;
+      border-radius: 2px;
+      white-space: nowrap;
+    }
+    .banner-dismiss {
+      background: transparent;
+      color: var(--navy);
+      border: none;
+      font-size: 18px;
+      cursor: pointer;
+      padding: 0 4px;
+      font-family: monospace;
+    }
+
+    /* ── TABS CONTENT ── */
+    #tabs-content {
+      flex: 1;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .tab-panel {
+      display: none;
+      height: 100%;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding-bottom: calc(var(--tab-h) + var(--safe-bottom) + 16px);
+    }
+    .tab-panel.active { display: block; }
+
+    /* ── BOTTOM TAB BAR ── */
+    #tab-bar {
+      position: fixed;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100%;
+      max-width: 600px;
+      height: calc(var(--tab-h) + var(--safe-bottom));
+      background: var(--navy2);
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: flex-start;
+      padding-top: 8px;
+      z-index: 100;
+    }
+    .tab-btn {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 4px 0;
+      position: relative;
+    }
+    .tab-btn .tab-icon { font-size: 20px; line-height: 1; }
+    .tab-btn .tab-label {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      color: var(--text-dim);
+    }
+    .tab-btn.active .tab-label { color: var(--gold); }
+    .tab-btn::after {
+      content: '';
+      position: absolute;
+      top: -8px;
+      left: 20%;
+      right: 20%;
+      height: 2px;
+      background: transparent;
+      border-radius: 1px;
+    }
+    .tab-btn.active::after { background: var(--gold); }
+
+    /* ── SECTION HEADER ── */
+    .section-header {
+      padding: 16px 16px 0;
+    }
+    .brand-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-bottom: 2px solid var(--gold);
+      padding-bottom: 12px;
+      margin-bottom: 16px;
+    }
+    .brand-icon {
+      width: 44px;
+      height: 44px;
+      background: var(--gold);
+      color: var(--navy);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 22px;
+      flex-shrink: 0;
+      border-radius: 2px;
+    }
+    .brand-text h1 {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 26px;
+      letter-spacing: 3px;
+      color: var(--text);
+      line-height: 1;
+    }
+    .brand-text p {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 9px;
+      letter-spacing: 1.5px;
+      color: var(--gold);
+      text-transform: uppercase;
+    }
+    .tab-title {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 22px;
+      letter-spacing: 3px;
+      color: var(--text);
+      border-bottom: 2px solid var(--gold);
+      padding-bottom: 10px;
+      margin-bottom: 16px;
+    }
+
+    /* ── CARDS ── */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      margin: 0 16px 12px;
+      overflow: hidden;
+    }
+    .card-header {
+      padding: 12px 14px;
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .card-header:active { background: var(--navy3); }
+    .card-body {
+      padding: 12px 14px 14px;
+      border-top: 1px solid var(--border);
+      display: none;
+    }
+    .card-body.open { display: block; }
+
+    /* ── FORMS ── */
+    .form-wrap { padding: 0 16px; }
+    .field { margin-bottom: 14px; }
+    .field label {
+      display: block;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 1.4px;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      margin-bottom: 5px;
+    }
+    .field input,
+    .field textarea,
+    .field select {
+      width: 100%;
+      background: var(--navy2);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      color: var(--text);
+      font-family: 'IBM Plex Sans', sans-serif;
+      font-size: 14px;
+      padding: 10px 12px;
+      outline: none;
+      appearance: none;
+      -webkit-appearance: none;
+    }
+    .field input:focus,
+    .field textarea:focus,
+    .field select:focus {
+      border-color: var(--gold);
+    }
+    .field textarea { min-height: 80px; resize: vertical; }
+    .field select {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%238a95a5'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      padding-right: 32px;
+    }
+
+    /* ── PILL TOGGLE ── */
+    .pill-row {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .pill {
+      padding: 7px 14px;
+      border: 1.5px solid var(--border);
+      border-radius: 20px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      color: var(--text-dim);
+      background: transparent;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .pill.active {
+      background: var(--gold);
+      border-color: var(--gold);
+      color: var(--navy);
+    }
+
+    /* ── BUTTONS ── */
+    .btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      width: 100%;
+      padding: 16px;
+      border: none;
+      border-radius: 3px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    .btn:active { opacity: 0.8; }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-primary { background: var(--gold); color: var(--navy); }
+    .btn-outline {
+      background: transparent;
+      color: var(--gold);
+      border: 1.5px solid var(--gold);
+    }
+    .btn-danger {
+      background: transparent;
+      color: var(--red);
+      border: 1.5px solid var(--red);
+    }
+    .btn-sm {
+      padding: 9px 14px;
+      font-size: 10px;
+      letter-spacing: 1px;
+      width: auto;
+    }
+    .btn-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    /* ── AGENT PIPELINE ── */
+    #agent-section { display: none; padding: 0 16px; }
+    .agent-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+    .agent-chip {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px 10px;
+      border: 1.5px solid var(--border);
+      border-radius: 20px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.8px;
+      color: var(--text-dim);
+    }
+    .agent-chip.running {
+      border-color: var(--gold);
+      color: var(--gold);
+    }
+    .agent-chip.done {
+      border-color: var(--green);
+      color: var(--green);
+    }
+    .agent-chip.error {
+      border-color: var(--red);
+      color: var(--red);
+    }
+    .chip-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+    .chip-dot.pulse {
+      animation: pulse 1s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.2; }
+    }
+
+    /* ── AGENT OUTPUT CARDS ── */
+    .agent-output-card {
+      background: var(--navy2);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      margin-bottom: 10px;
+      overflow: hidden;
+    }
+    .agent-output-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 12px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .agent-output-header:active { background: var(--navy3); }
+    .agent-output-label {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 1.4px;
+      color: var(--gold);
+      text-transform: uppercase;
+    }
+    .agent-output-body {
+      display: none;
+      padding: 12px;
+      border-top: 1px solid var(--border);
+    }
+    .agent-output-body.open { display: block; }
+
+    /* ── FINAL RESPONSE ── */
+    #final-section {
+      display: none;
+      padding: 0 16px;
+      margin-top: 6px;
+    }
+    .final-card {
+      background: var(--navy2);
+      border: 2px solid var(--gold);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .final-card-header {
+      background: var(--gold);
+      padding: 10px 14px;
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 18px;
+      letter-spacing: 2px;
+      color: var(--navy);
+    }
+    .final-card-body { padding: 14px; }
+    .final-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    /* ── MARKDOWN ── */
+    .md-output { color: var(--text); line-height: 1.6; }
+    .md-output h1 {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 18px;
+      letter-spacing: 2px;
+      color: var(--gold);
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 6px;
+      margin: 14px 0 8px;
+    }
+    .md-output h2 {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1.4px;
+      color: var(--gold);
+      text-transform: uppercase;
+      margin: 12px 0 6px;
+      border-left: 3px solid var(--gold);
+      padding-left: 8px;
+    }
+    .md-output h3 {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      margin: 10px 0 4px;
+    }
+    .md-output p { margin: 6px 0; font-size: 13px; }
+    .md-output ul, .md-output ol {
+      margin: 6px 0 6px 18px;
+      padding: 0;
+    }
+    .md-output li { margin: 3px 0; font-size: 13px; }
+    .md-output strong { font-weight: 700; color: var(--text); }
+    .md-output em { color: var(--text-dim); font-style: italic; }
+    .md-output code {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px;
+      background: var(--navy);
+      padding: 2px 5px;
+      border-radius: 2px;
+    }
+
+    /* ── INCIDENT / GRIEVANCE CARDS ── */
+    .record-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      margin: 0 16px 10px;
+      overflow: hidden;
+    }
+    .record-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 11px 13px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .record-header:active { background: var(--navy3); }
+    .type-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .record-info { flex: 1; min-width: 0; }
+    .record-type {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+    }
+    .record-meta {
+      font-size: 11px;
+      color: var(--text-dim);
+      margin-top: 2px;
+    }
+    .record-preview {
+      font-size: 11px;
+      color: var(--text-dim);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-top: 2px;
+    }
+    .record-body {
+      padding: 12px 13px 14px;
+      border-top: 1px solid var(--border);
+      display: none;
+    }
+    .record-body.open { display: block; }
+    .detail-row { margin-bottom: 8px; }
+    .detail-label {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 1.2px;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      margin-bottom: 2px;
+    }
+    .detail-value {
+      font-size: 13px;
+      color: var(--text);
+    }
+    .status-row {
+      display: flex;
+      gap: 16px;
+      margin: 10px 0;
+    }
+    .status-chip .status-label {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      color: var(--text-dim);
+      text-transform: uppercase;
+    }
+    .status-chip .status-val {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    /* ── DEADLINE BADGE ── */
+    .deadline-badge {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 20px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+    .deadline-red { background: var(--red); color: #fff; }
+    .deadline-amber { background: var(--amber); color: var(--navy); }
+    .deadline-green { background: var(--green); color: var(--navy); }
+
+    /* ── LIST HELPERS ── */
+    .list-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      margin-bottom: 10px;
+    }
+    .list-count {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1.2px;
+      color: var(--text-dim);
+      text-transform: uppercase;
+    }
+
+    /* ── SPINNER ── */
+    .spinner {
+      display: inline-block;
+      width: 18px;
+      height: 18px;
+      border: 2px solid var(--border);
+      border-top-color: var(--gold);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── EMPTY STATE ── */
+    .empty-state {
+      text-align: center;
+      padding: 50px 24px;
+    }
+    .empty-state p {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px;
+      color: var(--text-dim);
+      letter-spacing: 0.5px;
+    }
+
+    /* ── DIVIDER ── */
+    .divider {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 16px 16px 10px;
+    }
+    .divider::before, .divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+    .divider span {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 1.4px;
+      color: var(--text-dim);
+      text-transform: uppercase;
+    }
+
+    /* ── TOAST ── */
+    #toast {
+      position: fixed;
+      bottom: calc(var(--tab-h) + var(--safe-bottom) + 10px);
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--green);
+      color: var(--navy);
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      padding: 10px 18px;
+      border-radius: 3px;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.2s;
+      z-index: 200;
+      white-space: nowrap;
+    }
+    #toast.show { opacity: 1; }
+
+    /* ── CONFIRM DIALOG ── */
+    #confirm-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      z-index: 300;
+      align-items: center;
+      justify-content: center;
+    }
+    #confirm-overlay.show { display: flex; }
+    .confirm-box {
+      background: var(--navy2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 24px;
+      width: 90%;
+      max-width: 340px;
+    }
+    .confirm-box p {
+      font-size: 14px;
+      margin-bottom: 18px;
+      color: var(--text);
+    }
+    .confirm-box .btn-row { justify-content: flex-end; }
+
+    /* ── STOP BUTTON ── */
+    #stop-btn {
+      display: none;
+      position: fixed;
+      top: 12px;
+      right: 12px;
+      z-index: 150;
+      background: var(--red);
+      color: #fff;
+      border: none;
+      border-radius: 3px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      padding: 8px 14px;
+      cursor: pointer;
+    }
+    #stop-btn.show { display: block; }
+  </style>
+</head>
+<body>
+
+<div id="app">
+
+  <!-- Deadline alert banner -->
+  <div id="deadline-banner"></div>
+
+  <!-- Install banner -->
+  <div id="install-banner" class="install-banner">
+    <span>📱 Add WorkerShield to your home screen</span>
+    <button class="banner-btn" id="install-btn">ADD</button>
+    <button class="banner-dismiss" id="install-dismiss">✕</button>
+  </div>
+
+  <!-- Tab content -->
+  <div id="tabs-content">
+
+    <!-- ═══ TAB 1: SHIELD ═══ -->
+    <div id="panel-shield" class="tab-panel active">
+      <div class="section-header">
+        <div class="brand-row">
+          <div class="brand-icon">W</div>
+          <div class="brand-text">
+            <h1>WORKERSHIELD</h1>
+            <p>Ontario Labour Defense · Multi-Agent</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-wrap" id="shield-form">
+        <div class="field">
+          <label>Local / Union</label>
+          <input type="text" id="f-local" value="Unifor Local 1285">
+        </div>
+        <div class="field">
+          <label>Employer</label>
+          <input type="text" id="f-employer" value="Saputo Dairy Products Canada G.P.">
+        </div>
+        <div class="field">
+          <label>Case History (prior incidents, discipline, dates)</label>
+          <textarea id="f-history" placeholder="Any prior incidents, grievances, or relevant history…"></textarea>
+        </div>
+        <div class="field">
+          <label>Key People &amp; Dates</label>
+          <textarea id="f-people" placeholder="Names, titles, and key dates involved…" style="min-height:60px"></textarea>
+        </div>
+        <div class="field">
+          <label>Your Active Role</label>
+          <div class="pill-row" id="role-pills">
+            <button class="pill active" data-role="Both Roles">Both Roles</button>
+            <button class="pill" data-role="Steward">Steward</button>
+            <button class="pill" data-role="JHSC">JHSC Co-Chair</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>Describe the Problem *</label>
+          <textarea id="f-problem" style="min-height:120px" placeholder="What happened? Be specific — dates, names, what was said or done, what management did. The more detail, the stronger the analysis."></textarea>
+        </div>
+        <button class="btn btn-primary" id="run-btn" style="margin-bottom:16px">
+          ⚡ ACTIVATE WORKERSHIELD
+        </button>
+      </div>
+
+      <!-- Agent pipeline section -->
+      <div id="agent-section">
+        <div class="agent-chips" id="agent-chips"></div>
+        <div id="agent-outputs"></div>
+      </div>
+
+      <!-- Final response -->
+      <div id="final-section">
+        <div class="final-card">
+          <div class="final-card-header">★ WORKERSHIELD RESPONSE</div>
+          <div class="final-card-body">
+            <div class="md-output" id="final-output"></div>
+            <div class="final-actions" id="final-actions">
+              <button class="btn btn-primary" id="pdf-btn">📄 EXPORT FULL PDF</button>
+              <button class="btn btn-outline" id="copy-btn">📋 COPY FULL REPORT</button>
+              <button class="btn btn-outline" id="new-btn">+ NEW PROBLEM</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ TAB 2: INCIDENTS ═══ -->
+    <div id="panel-incidents" class="tab-panel">
+      <div class="section-header">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+          <div class="tab-title" style="margin:0;border:none;padding:0">INCIDENT LOG</div>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-sm btn-outline" id="inc-show-form-btn">+ LOG</button>
+            <button class="btn btn-sm btn-outline" id="inc-show-list-btn" style="border-color:var(--border);color:var(--text-dim)">LIST</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Incident form -->
+      <div id="inc-form-wrap" class="form-wrap">
+        <div class="field">
+          <label>Date</label>
+          <input type="date" id="inc-date">
+        </div>
+        <div class="field">
+          <label>Time</label>
+          <input type="time" id="inc-time">
+        </div>
+        <div class="field">
+          <label>Location</label>
+          <select id="inc-location">
+            <option>Shipping Dock</option>
+            <option>Receiving Dock</option>
+            <option>Pick Line</option>
+            <option>Cold Storage</option>
+            <option selected>Production Floor</option>
+            <option>Maintenance</option>
+            <option>Office</option>
+            <option>Other</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Incident Type</label>
+          <select id="inc-type">
+            <option>Near Miss</option>
+            <option>Injury</option>
+            <option>Equipment Issue</option>
+            <option>Safety Violation</option>
+            <option>Harassment</option>
+            <option>Discipline</option>
+            <option>Grievance</option>
+            <option>Other</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>People Involved (names or "anonymous")</label>
+          <input type="text" id="inc-people" placeholder='Names or "anonymous"'>
+        </div>
+        <div class="field">
+          <label>Brief Description *</label>
+          <textarea id="inc-desc" style="min-height:90px" placeholder="What happened? Be specific — dates, times, what was said or done."></textarea>
+        </div>
+        <div class="field">
+          <label>Witnesses (optional)</label>
+          <input type="text" id="inc-witnesses" placeholder='Names or "anonymous"'>
+        </div>
+        <div class="field">
+          <label>Management Notified?</label>
+          <div class="pill-row" id="inc-mgmt-pills">
+            <button class="pill" data-val="Yes">Yes</button>
+            <button class="pill" data-val="No">No</button>
+            <button class="pill active" data-val="Not Yet">Not Yet</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>Formal Report Filed?</label>
+          <div class="pill-row" id="inc-report-pills">
+            <button class="pill" data-val="Yes">Yes</button>
+            <button class="pill active" data-val="No">No</button>
+          </div>
+        </div>
+        <button class="btn btn-primary" id="inc-save-btn" style="margin-bottom:16px">▲ SAVE INCIDENT</button>
+      </div>
+
+      <!-- Incident list -->
+      <div id="inc-list-wrap" style="display:none">
+        <div class="list-header">
+          <span class="list-count" id="inc-count">0 INCIDENTS</span>
+          <button class="btn btn-sm btn-outline" id="inc-export-btn">EXPORT ALL</button>
+        </div>
+        <div id="inc-loading" class="empty-state" style="display:none">
+          <div class="spinner"></div>
+        </div>
+        <div id="inc-empty" class="empty-state" style="display:none">
+          <p>NO INCIDENTS LOGGED</p>
+          <p style="margin-top:6px">Tap + LOG to record your first incident.</p>
+        </div>
+        <div id="inc-list"></div>
+      </div>
+    </div>
+
+    <!-- ═══ TAB 3: GRIEVANCES ═══ -->
+    <div id="panel-grievances" class="tab-panel">
+      <div class="section-header">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+          <div class="tab-title" style="margin:0;border:none;padding:0">GRIEVANCE TRACKER</div>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-sm btn-outline" id="grv-show-form-btn">+ NEW</button>
+            <button class="btn btn-sm btn-outline" id="grv-show-list-btn" style="border-color:var(--border);color:var(--text-dim)">LIST</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Grievance form -->
+      <div id="grv-form-wrap" class="form-wrap">
+        <div class="field">
+          <label>Grievor Name</label>
+          <input type="text" id="grv-grievor" placeholder="Full name or employee #">
+        </div>
+        <div class="field">
+          <label>Date of Incident</label>
+          <input type="date" id="grv-incident-date">
+        </div>
+        <div class="field">
+          <label>Date Grievance Filed</label>
+          <input type="date" id="grv-filed-date">
+        </div>
+        <div class="field">
+          <label>Current Step</label>
+          <select id="grv-step">
+            <option>Complaint</option>
+            <option>Step 1</option>
+            <option>Step 2</option>
+            <option>Arbitration</option>
+            <option>Resolved</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>CBA Articles Violated</label>
+          <input type="text" id="grv-articles" placeholder="e.g. Articles 4.01, 5.01, 9.03">
+        </div>
+        <div class="field">
+          <label>Brief Description</label>
+          <textarea id="grv-desc" style="min-height:80px" placeholder="Nature of grievance and remedy sought…"></textarea>
+        </div>
+        <div class="field">
+          <label>Next Deadline Date</label>
+          <input type="date" id="grv-deadline">
+        </div>
+        <div class="field">
+          <label>Status</label>
+          <select id="grv-status">
+            <option>Open</option>
+            <option>Pending Response</option>
+            <option>Escalating</option>
+            <option>Resolved</option>
+            <option>Abandoned</option>
+          </select>
+        </div>
+        <button class="btn btn-primary" id="grv-save-btn" style="margin-bottom:16px">▲ SAVE GRIEVANCE</button>
+      </div>
+
+      <!-- Grievance list -->
+      <div id="grv-list-wrap" style="display:none">
+        <div class="list-header">
+          <span class="list-count" id="grv-count">0 GRIEVANCES</span>
+        </div>
+        <div id="grv-loading" class="empty-state" style="display:none">
+          <div class="spinner"></div>
+        </div>
+        <div id="grv-empty" class="empty-state" style="display:none">
+          <p>NO GRIEVANCES TRACKED</p>
+          <p style="margin-top:6px">Tap + NEW to add your first grievance.</p>
+        </div>
+        <div id="grv-list"></div>
+      </div>
+    </div>
+
+  </div><!-- /tabs-content -->
+
+  <!-- Bottom tab bar -->
+  <div id="tab-bar">
+    <button class="tab-btn active" data-tab="shield">
+      <span class="tab-icon">🛡️</span>
+      <span class="tab-label">SHIELD</span>
+    </button>
+    <button class="tab-btn" data-tab="incidents">
+      <span class="tab-icon">📋</span>
+      <span class="tab-label">INCIDENTS</span>
+    </button>
+    <button class="tab-btn" data-tab="grievances">
+      <span class="tab-icon">⚖️</span>
+      <span class="tab-label">GRIEVANCES</span>
+    </button>
+  </div>
+
+</div><!-- /app -->
+
+<!-- Stop button -->
+<button id="stop-btn">■ STOP</button>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<!-- Confirm dialog -->
+<div id="confirm-overlay">
+  <div class="confirm-box">
+    <p id="confirm-msg">Are you sure?</p>
+    <div class="btn-row">
+      <button class="btn btn-sm btn-outline" id="confirm-cancel">CANCEL</button>
+      <button class="btn btn-sm btn-danger" id="confirm-ok">DELETE</button>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ── CONFIG ──────────────────────────────────────────────────────────────────
+
+const WORKER_URL = 'https://workershield.kevindm1989.workers.dev';
+
+// ── PWA MANIFEST (inline as data URI) ───────────────────────────────────────
+
+(function() {
+  const manifest = {
+    name: 'WorkerShield',
+    short_name: 'WS',
+    description: 'Ontario labour defense AI for union stewards and JHSC co-chairs',
+    start_url: './',
+    display: 'standalone',
+    orientation: 'portrait',
+    theme_color: '#0a1628',
+    background_color: '#0a1628',
+    icons: [
+      { src: 'https://via.placeholder.com/192x192/0a1628/d4a017?text=WS', sizes: '192x192', type: 'image/png' },
+      { src: 'https://via.placeholder.com/512x512/0a1628/d4a017?text=WS', sizes: '512x512', type: 'image/png' }
+    ]
+  };
+  const blob = new Blob([JSON.stringify(manifest)], { type: 'application/manifest+json' });
+  document.getElementById('manifest-link').href = URL.createObjectURL(blob);
+})();
+
+// ── SERVICE WORKER (inline) ──────────────────────────────────────────────────
+
+if ('serviceWorker' in navigator) {
+  const swCode = `
+const CACHE = 'workershield-v1';
+const SHELL = ['./', './index.html'];
+self.addEventListener('install', e => {
+  e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL).catch(() => {})));
+  self.skipWaiting();
+});
+self.addEventListener('activate', e => {
+  e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))));
+  self.clients.claim();
+});
+self.addEventListener('fetch', e => {
+  if (e.request.url.includes('workershield.kevindm1989.workers.dev')) return;
+  e.respondWith(
+    fetch(e.request).catch(() =>
+      caches.match(e.request).then(r => r || caches.match('./index.html'))
+    )
+  );
+});
+`;
+  const swBlob = new Blob([swCode], { type: 'application/javascript' });
+  navigator.serviceWorker.register(URL.createObjectURL(swBlob)).catch(() => {});
+}
+
+// ── INSTALL BANNER ───────────────────────────────────────────────────────────
+
+let deferredPrompt = null;
+const installBanner = document.getElementById('install-banner');
+const installBtn = document.getElementById('install-btn');
+const installDismiss = document.getElementById('install-dismiss');
+
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPrompt = e;
+  if (!localStorage.getItem('ws_install_dismissed')) {
+    installBanner.classList.add('show');
+  }
+});
+
+installBtn.addEventListener('click', async () => {
+  if (deferredPrompt) {
+    deferredPrompt.prompt();
+    installBanner.classList.remove('show');
+  }
+});
+installDismiss.addEventListener('click', () => {
+  installBanner.classList.remove('show');
+  localStorage.setItem('ws_install_dismissed', '1');
+});
+
+// ── TAB ROUTING ──────────────────────────────────────────────────────────────
+
+let activeTab = 'shield';
+
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+});
+
+function switchTab(tab) {
+  activeTab = tab;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === `panel-${tab}`));
+  if (tab === 'incidents') loadIncidents();
+  if (tab === 'grievances') { loadGrievances(); checkDeadlines(); }
+}
+
+// ── MARKDOWN RENDERER ────────────────────────────────────────────────────────
+
+function renderMd(text) {
+  if (!text) return '';
+  const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const inline = s => esc(s)
+    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+    .replace(/__(.+?)__/g,'<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g,'<em>$1</em>')
+    .replace(/`([^`]+)`/g,'<code>$1</code>');
+
+  const lines = text.replace(/\r\n/g,'\n').split('\n');
+  const out = [];
+  let inUl = false, inOl = false;
+
+  const closeList = () => {
+    if (inUl) { out.push('</ul>'); inUl = false; }
+    if (inOl) { out.push('</ol>'); inOl = false; }
+  };
+
+  for (const raw of lines) {
+    const line = raw.trimEnd();
+    if (!line.trim()) { closeList(); continue; }
+    const h1 = /^#\s+(.+)$/.exec(line);
+    const h2 = /^##\s+(.+)$/.exec(line);
+    const h3 = /^###\s+(.+)$/.exec(line);
+    const bullet = /^[-*+]\s+(.+)$/.exec(line);
+    const num = /^\d+[.)]\s+(.+)$/.exec(line);
+    if (h1) { closeList(); out.push(`<h1>${inline(h1[1])}</h1>`); }
+    else if (h2) { closeList(); out.push(`<h2>${inline(h2[1])}</h2>`); }
+    else if (h3) { closeList(); out.push(`<h3>${inline(h3[1])}</h3>`); }
+    else if (bullet) {
+      if (!inUl) { closeList(); out.push('<ul>'); inUl = true; }
+      out.push(`<li>${inline(bullet[1])}</li>`);
+    }
+    else if (num) {
+      if (!inOl) { closeList(); out.push('<ol>'); inOl = true; }
+      out.push(`<li>${inline(num[1])}</li>`);
+    }
+    else { closeList(); out.push(`<p>${inline(line)}</p>`); }
+  }
+  closeList();
+  return `<div class="md-output">${out.join('\n')}</div>`;
+}
+
+// ── TOAST ────────────────────────────────────────────────────────────────────
+
+let toastTimer = null;
+function showToast(msg, color) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.background = color || 'var(--green)';
+  t.classList.add('show');
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+// ── CONFIRM DIALOG ───────────────────────────────────────────────────────────
+
+function showConfirm(msg) {
+  return new Promise(resolve => {
+    const overlay = document.getElementById('confirm-overlay');
+    document.getElementById('confirm-msg').textContent = msg;
+    overlay.classList.add('show');
+    const ok = document.getElementById('confirm-ok');
+    const cancel = document.getElementById('confirm-cancel');
+    const done = result => {
+      overlay.classList.remove('show');
+      ok.removeEventListener('click', handleOk);
+      cancel.removeEventListener('click', handleCancel);
+      resolve(result);
+    };
+    const handleOk = () => done(true);
+    const handleCancel = () => done(false);
+    ok.addEventListener('click', handleOk);
+    cancel.addEventListener('click', handleCancel);
+  });
+}
+
+// ── ROLE PILLS (Shield form) ──────────────────────────────────────────────────
+
+let selectedRole = 'Both Roles';
+document.getElementById('role-pills').addEventListener('click', e => {
+  const btn = e.target.closest('.pill');
+  if (!btn) return;
+  selectedRole = btn.dataset.role;
+  document.querySelectorAll('#role-pills .pill').forEach(p => p.classList.toggle('active', p === btn));
+});
+
+// ── INCIDENT MGMT PILLS ───────────────────────────────────────────────────────
+
+let incMgmt = 'Not Yet';
+document.getElementById('inc-mgmt-pills').addEventListener('click', e => {
+  const btn = e.target.closest('.pill');
+  if (!btn) return;
+  incMgmt = btn.dataset.val;
+  document.querySelectorAll('#inc-mgmt-pills .pill').forEach(p => p.classList.toggle('active', p === btn));
+});
+
+let incReport = 'No';
+document.getElementById('inc-report-pills').addEventListener('click', e => {
+  const btn = e.target.closest('.pill');
+  if (!btn) return;
+  incReport = btn.dataset.val;
+  document.querySelectorAll('#inc-report-pills .pill').forEach(p => p.classList.toggle('active', p === btn));
+});
+
+// ── INCIDENT FORM/LIST TOGGLE ─────────────────────────────────────────────────
+
+const incFormWrap = document.getElementById('inc-form-wrap');
+const incListWrap = document.getElementById('inc-list-wrap');
+const incShowFormBtn = document.getElementById('inc-show-form-btn');
+const incShowListBtn = document.getElementById('inc-show-list-btn');
+
+function showIncForm() {
+  incFormWrap.style.display = '';
+  incListWrap.style.display = 'none';
+  incShowFormBtn.style.borderColor = 'var(--gold)';
+  incShowFormBtn.style.color = 'var(--gold)';
+  incShowListBtn.style.borderColor = 'var(--border)';
+  incShowListBtn.style.color = 'var(--text-dim)';
+}
+function showIncList() {
+  incFormWrap.style.display = 'none';
+  incListWrap.style.display = '';
+  incShowListBtn.style.borderColor = 'var(--gold)';
+  incShowListBtn.style.color = 'var(--gold)';
+  incShowFormBtn.style.borderColor = 'var(--border)';
+  incShowFormBtn.style.color = 'var(--text-dim)';
+  loadIncidents();
+}
+incShowFormBtn.addEventListener('click', showIncForm);
+incShowListBtn.addEventListener('click', showIncList);
+
+// Init date/time fields
+(function initIncidentDefaults() {
+  const now = new Date();
+  const pad = n => String(n).padStart(2,'0');
+  document.getElementById('inc-date').value = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
+  document.getElementById('inc-time').value = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+})();
+
+function incidentTypeColor(type) {
+  const map = {
+    'Near Miss': '#f59e0b',
+    'Injury': '#e5484d',
+    'Equipment Issue': '#f97316',
+    'Safety Violation': '#e5484d',
+    'Harassment': '#c751c0',
+    'Discipline': '#d4a017',
+    'Grievance': '#3b82f6',
+    'Other': '#8a95a5'
+  };
+  return map[type] || '#8a95a5';
+}
+
+// ── INCIDENT SAVE ─────────────────────────────────────────────────────────────
+
+let incidents = [];
+
+document.getElementById('inc-save-btn').addEventListener('click', async () => {
+  const desc = document.getElementById('inc-desc').value.trim();
+  if (!desc) { showToast('Description is required', 'var(--red)'); return; }
+
+  const btn = document.getElementById('inc-save-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner"></div>';
+
+  const payload = {
+    date: document.getElementById('inc-date').value,
+    time: document.getElementById('inc-time').value,
+    location: document.getElementById('inc-location').value,
+    type: document.getElementById('inc-type').value,
+    people: document.getElementById('inc-people').value.trim(),
+    description: desc,
+    witnesses: document.getElementById('inc-witnesses').value.trim(),
+    managementNotified: incMgmt,
+    reportFiled: incReport
+  };
+
+  try {
+    const res = await fetch(`${WORKER_URL}/api/incidents`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast('✓ INCIDENT SAVED');
+      document.getElementById('inc-desc').value = '';
+      document.getElementById('inc-people').value = '';
+      document.getElementById('inc-witnesses').value = '';
+      showIncList();
+    } else {
+      showToast(data.error || 'Save failed', 'var(--red)');
+    }
+  } catch {
+    showToast('Network error — check connection', 'var(--red)');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '▲ SAVE INCIDENT';
+  }
+});
+
+// ── INCIDENT LOAD & RENDER ────────────────────────────────────────────────────
+
+let incLoading = false;
+async function loadIncidents() {
+  if (incLoading) return;
+  incLoading = true;
+  const loading = document.getElementById('inc-loading');
+  const empty = document.getElementById('inc-empty');
+  const list = document.getElementById('inc-list');
+  loading.style.display = 'block';
+  empty.style.display = 'none';
+  list.innerHTML = '';
+  try {
+    const res = await fetch(`${WORKER_URL}/api/incidents`);
+    const data = await res.json();
+    incidents = data.incidents || [];
+    renderIncidents();
+  } catch {
+    showToast('Could not load incidents', 'var(--red)');
+  } finally {
+    loading.style.display = 'none';
+    incLoading = false;
+  }
+}
+
+function renderIncidents() {
+  const list = document.getElementById('inc-list');
+  const empty = document.getElementById('inc-empty');
+  const count = document.getElementById('inc-count');
+  list.innerHTML = '';
+  count.textContent = `${incidents.length} INCIDENT${incidents.length !== 1 ? 'S' : ''}`;
+  if (!incidents.length) { empty.style.display = 'block'; return; }
+  empty.style.display = 'none';
+  incidents.forEach(inc => {
+    const card = buildIncidentCard(inc);
+    list.appendChild(card);
+  });
+}
+
+function buildIncidentCard(inc) {
+  const color = incidentTypeColor(inc.type);
+  const wrap = document.createElement('div');
+  wrap.className = 'record-card';
+  wrap.innerHTML = `
+    <div class="record-header" data-id="${inc.id}">
+      <div class="type-dot" style="background:${color}"></div>
+      <div class="record-info">
+        <div class="record-type" style="color:${color}">${inc.type.toUpperCase()}</div>
+        <div class="record-meta">${inc.date} · ${inc.time} · ${inc.location}</div>
+        ${inc.description ? `<div class="record-preview">${inc.description}</div>` : ''}
+      </div>
+      <span style="color:var(--gold);font-size:16px;">▸</span>
+    </div>
+    <div class="record-body" data-body>
+      ${inc.description ? `<div class="detail-row"><div class="detail-label">Description</div><div class="detail-value">${inc.description}</div></div>` : ''}
+      ${inc.people ? `<div class="detail-row"><div class="detail-label">People Involved</div><div class="detail-value">${inc.people}</div></div>` : ''}
+      ${inc.witnesses ? `<div class="detail-row"><div class="detail-label">Witnesses</div><div class="detail-value">${inc.witnesses}</div></div>` : ''}
+      <div class="status-row">
+        <div class="status-chip">
+          <div class="status-label">MGMT NOTIFIED</div>
+          <div class="status-val" style="color:${inc.managementNotified==='Yes'?'var(--green)':'var(--amber)'}">${inc.managementNotified}</div>
+        </div>
+        <div class="status-chip">
+          <div class="status-label">REPORT FILED</div>
+          <div class="status-val" style="color:${inc.reportFiled==='Yes'?'var(--green)':'var(--amber)'}">${inc.reportFiled}</div>
+        </div>
+      </div>
+      <div class="btn-row" style="flex-direction:column;gap:8px">
+        <button class="btn btn-primary btn-sm" data-action="send" style="width:100%">▲ SEND TO WORKERSHIELD</button>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-outline btn-sm" data-action="copy" style="flex:1">COPY</button>
+          <button class="btn btn-danger btn-sm" data-action="delete" style="flex:1">DELETE</button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  const header = wrap.querySelector('.record-header');
+  const body = wrap.querySelector('[data-body]');
+  const chevron = header.querySelector('span');
+
+  header.addEventListener('click', () => {
+    const open = body.classList.toggle('open');
+    chevron.textContent = open ? '▾' : '▸';
+  });
+
+  wrap.querySelector('[data-action="send"]').addEventListener('click', () => {
+    const text = buildIncidentText(inc);
+    document.getElementById('f-problem').value = text;
+    switchTab('shield');
+    document.getElementById('f-problem').scrollIntoView({ behavior: 'smooth' });
+  });
+
+  wrap.querySelector('[data-action="copy"]').addEventListener('click', async () => {
+    await navigator.clipboard.writeText(buildIncidentText(inc)).catch(() => {});
+    showToast('✓ COPIED');
+  });
+
+  wrap.querySelector('[data-action="delete"]').addEventListener('click', async () => {
+    const ok = await showConfirm('Delete this incident? This cannot be undone.');
+    if (!ok) return;
+    try {
+      await fetch(`${WORKER_URL}/api/incidents/${inc.id}`, { method: 'DELETE' });
+      incidents = incidents.filter(i => i.id !== inc.id);
+      renderIncidents();
+      showToast('Incident deleted');
+    } catch {
+      showToast('Delete failed', 'var(--red)');
+    }
+  });
+
+  return wrap;
+}
+
+function buildIncidentText(inc) {
+  return [
+    `Incident Date/Time: ${inc.date} at ${inc.time}`,
+    `Location: ${inc.location}`,
+    `Incident Type: ${inc.type}`,
+    inc.description ? `Description: ${inc.description}` : null,
+    inc.people ? `People Involved: ${inc.people}` : null,
+    inc.witnesses ? `Witnesses: ${inc.witnesses}` : null,
+    `Management Notified: ${inc.managementNotified}`,
+    `Formal Report Filed: ${inc.reportFiled}`
+  ].filter(Boolean).join('\n');
+}
+
+// ── INCIDENT EXPORT ALL ───────────────────────────────────────────────────────
+
+document.getElementById('inc-export-btn').addEventListener('click', () => {
+  if (!incidents.length) { showToast('No incidents to export', 'var(--amber)'); return; }
+
+  if (typeof window.jspdf !== 'undefined') {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+    let y = 20;
+    doc.setFontSize(18);
+    doc.setTextColor(10, 22, 40);
+    doc.text('WORKERSHIELD — INCIDENT LOG', 20, y);
+    y += 8;
+    doc.setFontSize(9);
+    doc.text(`Unifor Local 1285 · Saputo Dairy Products Canada G.P. · Generated ${new Date().toLocaleDateString('en-CA')}`, 20, y);
+    y += 6;
+    doc.setFontSize(9);
+    doc.setTextColor(180,0,0);
+    doc.text('CONFIDENTIAL — UNION DOCUMENT', 20, y);
+    y += 10;
+    incidents.forEach((inc, i) => {
+      if (y > 260) { doc.addPage(); y = 20; }
+      doc.setTextColor(10, 22, 40);
+      doc.setFontSize(11);
+      doc.text(`INCIDENT #${String(i+1).padStart(3,'0')} — ${inc.type} — ${inc.date} ${inc.time}`, 20, y);
+      y += 6;
+      doc.setFontSize(9);
+      doc.text(`Location: ${inc.location}`, 20, y); y += 5;
+      if (inc.description) {
+        const lines = doc.splitTextToSize(`Description: ${inc.description}`, 170);
+        doc.text(lines, 20, y); y += lines.length * 4.5;
+      }
+      doc.text(`Mgmt Notified: ${inc.managementNotified}  |  Report Filed: ${inc.reportFiled}`, 20, y); y += 8;
+    });
+    doc.setFontSize(8);
+    doc.setTextColor(130, 149, 165);
+    doc.text('Generated by WorkerShield — For union use only', 20, 287);
+    doc.save(`WorkerShield_Incidents_${new Date().toISOString().slice(0,10)}.pdf`);
+  } else {
+    // Fallback: copy as text
+    const lines = ['WORKERSHIELD INCIDENT LOG', 'CONFIDENTIAL — UNION DOCUMENT', `Generated: ${new Date().toLocaleDateString('en-CA')}`, ''];
+    incidents.forEach((inc, i) => {
+      lines.push(`INCIDENT #${String(i+1).padStart(3,'0')}`);
+      lines.push(`Date/Time: ${inc.date} ${inc.time}`);
+      lines.push(`Location: ${inc.location}`);
+      lines.push(`Type: ${inc.type}`);
+      lines.push(`Description: ${inc.description}`);
+      lines.push(`Management Notified: ${inc.managementNotified}`);
+      lines.push(`Report Filed: ${inc.reportFiled}`);
+      lines.push('---');
+    });
+    navigator.clipboard.writeText(lines.join('\n')).catch(() => {});
+    showToast('✓ COPIED TO CLIPBOARD');
+  }
+});
+
+// ── GRIEVANCE FORM/LIST TOGGLE ────────────────────────────────────────────────
+
+const grvFormWrap = document.getElementById('grv-form-wrap');
+const grvListWrap = document.getElementById('grv-list-wrap');
+const grvShowFormBtn = document.getElementById('grv-show-form-btn');
+const grvShowListBtn = document.getElementById('grv-show-list-btn');
+
+function showGrvForm() {
+  grvFormWrap.style.display = '';
+  grvListWrap.style.display = 'none';
+  grvShowFormBtn.style.borderColor = 'var(--gold)';
+  grvShowFormBtn.style.color = 'var(--gold)';
+  grvShowListBtn.style.borderColor = 'var(--border)';
+  grvShowListBtn.style.color = 'var(--text-dim)';
+}
+function showGrvList() {
+  grvFormWrap.style.display = 'none';
+  grvListWrap.style.display = '';
+  grvShowListBtn.style.borderColor = 'var(--gold)';
+  grvShowListBtn.style.color = 'var(--gold)';
+  grvShowFormBtn.style.borderColor = 'var(--border)';
+  grvShowFormBtn.style.color = 'var(--text-dim)';
+  loadGrievances();
+}
+grvShowFormBtn.addEventListener('click', showGrvForm);
+grvShowListBtn.addEventListener('click', showGrvList);
+
+// Init grievance date fields
+(function() {
+  const today = new Date().toISOString().slice(0,10);
+  document.getElementById('grv-incident-date').value = today;
+  document.getElementById('grv-filed-date').value = today;
+})();
+
+// ── GRIEVANCE SAVE ────────────────────────────────────────────────────────────
+
+let grievances = [];
+
+document.getElementById('grv-save-btn').addEventListener('click', async () => {
+  const grievor = document.getElementById('grv-grievor').value.trim();
+  if (!grievor) { showToast('Grievor name is required', 'var(--red)'); return; }
+
+  const btn = document.getElementById('grv-save-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner"></div>';
+
+  const payload = {
+    grievor,
+    incidentDate: document.getElementById('grv-incident-date').value,
+    filedDate: document.getElementById('grv-filed-date').value,
+    step: document.getElementById('grv-step').value,
+    articles: document.getElementById('grv-articles').value.trim(),
+    description: document.getElementById('grv-desc').value.trim(),
+    deadline: document.getElementById('grv-deadline').value,
+    status: document.getElementById('grv-status').value
+  };
+
+  try {
+    const res = await fetch(`${WORKER_URL}/api/grievances`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast('✓ GRIEVANCE SAVED');
+      document.getElementById('grv-grievor').value = '';
+      document.getElementById('grv-articles').value = '';
+      document.getElementById('grv-desc').value = '';
+      document.getElementById('grv-deadline').value = '';
+      showGrvList();
+    } else {
+      showToast(data.error || 'Save failed', 'var(--red)');
+    }
+  } catch {
+    showToast('Network error — check connection', 'var(--red)');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '▲ SAVE GRIEVANCE';
+  }
+});
+
+// ── GRIEVANCE LOAD & RENDER ───────────────────────────────────────────────────
+
+let grvLoading = false;
+async function loadGrievances() {
+  if (grvLoading) return;
+  grvLoading = true;
+  const loading = document.getElementById('grv-loading');
+  const empty = document.getElementById('grv-empty');
+  const list = document.getElementById('grv-list');
+  loading.style.display = 'block';
+  empty.style.display = 'none';
+  list.innerHTML = '';
+  try {
+    const res = await fetch(`${WORKER_URL}/api/grievances`);
+    const data = await res.json();
+    grievances = data.grievances || [];
+    // Sort by deadline soonest first
+    grievances.sort((a, b) => {
+      if (!a.deadline) return 1;
+      if (!b.deadline) return -1;
+      return new Date(a.deadline) - new Date(b.deadline);
+    });
+    renderGrievances();
+  } catch {
+    showToast('Could not load grievances', 'var(--red)');
+  } finally {
+    loading.style.display = 'none';
+    grvLoading = false;
+  }
+}
+
+function daysUntil(dateStr) {
+  if (!dateStr) return null;
+  const now = new Date(); now.setHours(0,0,0,0);
+  const d = new Date(dateStr); d.setHours(0,0,0,0);
+  return Math.round((d - now) / 86400000);
+}
+
+function deadlineBadge(dateStr) {
+  const days = daysUntil(dateStr);
+  if (days === null) return '';
+  const label = days < 0 ? `OVERDUE ${Math.abs(days)}d` : days === 0 ? 'DUE TODAY' : `${days}d`;
+  const cls = days <= 3 ? 'deadline-red' : days <= 7 ? 'deadline-amber' : 'deadline-green';
+  return `<span class="deadline-badge ${cls}">${label}</span>`;
+}
+
+function renderGrievances() {
+  const list = document.getElementById('grv-list');
+  const empty = document.getElementById('grv-empty');
+  const count = document.getElementById('grv-count');
+  list.innerHTML = '';
+  count.textContent = `${grievances.length} GRIEVANCE${grievances.length !== 1 ? 'S' : ''}`;
+  if (!grievances.length) { empty.style.display = 'block'; return; }
+  empty.style.display = 'none';
+  grievances.forEach(grv => {
+    const card = buildGrievanceCard(grv);
+    list.appendChild(card);
+  });
+}
+
+function buildGrievanceCard(grv) {
+  const days = daysUntil(grv.deadline);
+  const dotColor = days === null ? 'var(--text-dim)' : days <= 3 ? 'var(--red)' : days <= 7 ? 'var(--amber)' : 'var(--green)';
+  const wrap = document.createElement('div');
+  wrap.className = 'record-card';
+  wrap.innerHTML = `
+    <div class="record-header">
+      <div class="type-dot" style="background:${dotColor}"></div>
+      <div class="record-info">
+        <div class="record-type" style="color:var(--gold)">${grv.grievor || '—'}</div>
+        <div class="record-meta">${grv.step || '—'} · ${grv.status || '—'}</div>
+        ${grv.deadline ? `<div class="record-meta">${deadlineBadge(grv.deadline)}</div>` : ''}
+      </div>
+      <span style="color:var(--gold);font-size:16px;">▸</span>
+    </div>
+    <div class="record-body" data-body>
+      ${grv.incidentDate ? `<div class="detail-row"><div class="detail-label">Incident Date</div><div class="detail-value">${grv.incidentDate}</div></div>` : ''}
+      ${grv.filedDate ? `<div class="detail-row"><div class="detail-label">Filed Date</div><div class="detail-value">${grv.filedDate}</div></div>` : ''}
+      ${grv.articles ? `<div class="detail-row"><div class="detail-label">CBA Articles</div><div class="detail-value">${grv.articles}</div></div>` : ''}
+      ${grv.description ? `<div class="detail-row"><div class="detail-label">Description</div><div class="detail-value">${grv.description}</div></div>` : ''}
+      ${grv.deadline ? `<div class="detail-row"><div class="detail-label">Next Deadline</div><div class="detail-value">${grv.deadline} ${deadlineBadge(grv.deadline)}</div></div>` : ''}
+      <div class="btn-row" style="margin-top:12px">
+        <button class="btn btn-outline btn-sm" data-action="copy" style="flex:1">COPY</button>
+        <button class="btn btn-danger btn-sm" data-action="delete" style="flex:1">DELETE</button>
+      </div>
+    </div>
+  `;
+
+  const header = wrap.querySelector('.record-header');
+  const body = wrap.querySelector('[data-body]');
+  const chevron = header.querySelector('span');
+
+  header.addEventListener('click', () => {
+    const open = body.classList.toggle('open');
+    chevron.textContent = open ? '▾' : '▸';
+  });
+
+  wrap.querySelector('[data-action="copy"]').addEventListener('click', async () => {
+    const text = [
+      `Grievor: ${grv.grievor}`,
+      `Step: ${grv.step}`,
+      `Status: ${grv.status}`,
+      grv.articles ? `CBA Articles: ${grv.articles}` : null,
+      grv.description ? `Description: ${grv.description}` : null,
+      grv.deadline ? `Next Deadline: ${grv.deadline}` : null
+    ].filter(Boolean).join('\n');
+    await navigator.clipboard.writeText(text).catch(() => {});
+    showToast('✓ COPIED');
+  });
+
+  wrap.querySelector('[data-action="delete"]').addEventListener('click', async () => {
+    const ok = await showConfirm('Delete this grievance? This cannot be undone.');
+    if (!ok) return;
+    try {
+      await fetch(`${WORKER_URL}/api/grievances/${grv.id}`, { method: 'DELETE' });
+      grievances = grievances.filter(g => g.id !== grv.id);
+      renderGrievances();
+      showToast('Grievance deleted');
+    } catch {
+      showToast('Delete failed', 'var(--red)');
+    }
+  });
+
+  return wrap;
+}
+
+// ── DEADLINE ALERT BANNER ─────────────────────────────────────────────────────
+
+async function checkDeadlines() {
+  if (!grievances.length) { await loadGrievances(); }
+  const urgent = grievances.filter(g => {
+    const d = daysUntil(g.deadline);
+    return d !== null && d <= 3 && g.status !== 'Resolved' && g.status !== 'Abandoned';
+  });
+  const banner = document.getElementById('deadline-banner');
+  if (urgent.length) {
+    banner.innerHTML = urgent.map(g => {
+      const d = daysUntil(g.deadline);
+      const label = d < 0 ? `OVERDUE ${Math.abs(d)} day(s)` : d === 0 ? 'DUE TODAY' : `in ${d} day(s)`;
+      return `⚠️ DEADLINE ALERT — ${g.grievor} grievance deadline ${label}`;
+    }).join('<br>');
+    banner.classList.add('show');
+  } else {
+    banner.classList.remove('show');
+  }
+}
+
+// ── AGENT PIPELINE ────────────────────────────────────────────────────────────
+
+let aborted = false;
+let allAgentOutputs = [];
+const STOP_BTN = document.getElementById('stop-btn');
+
+STOP_BTN.addEventListener('click', () => {
+  aborted = true;
+  STOP_BTN.classList.remove('show');
+});
+
+document.getElementById('run-btn').addEventListener('click', runPipeline);
+document.getElementById('new-btn').addEventListener('click', resetShield);
+
+function resetShield() {
+  document.getElementById('agent-section').style.display = 'none';
+  document.getElementById('final-section').style.display = 'none';
+  document.getElementById('agent-chips').innerHTML = '';
+  document.getElementById('agent-outputs').innerHTML = '';
+  document.getElementById('final-output').innerHTML = '';
+  document.getElementById('run-btn').style.display = '';
+  STOP_BTN.classList.remove('show');
+  allAgentOutputs = [];
+  aborted = false;
+}
+
+function setChipState(key, state) {
+  const chip = document.querySelector(`.agent-chip[data-key="${key}"]`);
+  if (!chip) return;
+  chip.className = `agent-chip ${state}`;
+  const dot = chip.querySelector('.chip-dot');
+  dot.className = `chip-dot ${state === 'running' ? 'pulse' : ''}`;
+  if (state === 'done') chip.querySelector('.chip-dot').textContent = '';
+}
+
+function createChip(key, label) {
+  const chip = document.createElement('div');
+  chip.className = 'agent-chip';
+  chip.dataset.key = key;
+  chip.innerHTML = `<div class="chip-dot"></div><span>${label.toUpperCase()}</span>`;
+  document.getElementById('agent-chips').appendChild(chip);
+}
+
+function createAgentOutputCard(key, label) {
+  const card = document.createElement('div');
+  card.className = 'agent-output-card';
+  card.id = `aoc-${key}`;
+  card.innerHTML = `
+    <div class="agent-output-header">
+      <span class="agent-output-label">AGENT: ${label.toUpperCase()}</span>
+      <span style="color:var(--text-dim);font-size:14px">▸</span>
+    </div>
+    <div class="agent-output-body" id="aob-${key}"></div>
+  `;
+  const header = card.querySelector('.agent-output-header');
+  const body = card.querySelector('.agent-output-body');
+  const chevron = header.querySelector('span:last-child');
+  header.addEventListener('click', () => {
+    const open = body.classList.toggle('open');
+    chevron.textContent = open ? '▾' : '▸';
+  });
+  document.getElementById('agent-outputs').appendChild(card);
+}
+
+function setAgentOutput(key, text) {
+  const body = document.getElementById(`aob-${key}`);
+  if (body) {
+    body.innerHTML = renderMd(text);
+  }
+}
+
+async function callAgent(agentType, problem, context, previousOutputs) {
+  const res = await fetch(`${WORKER_URL}/api/agent`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ agentType, problem, context, previousOutputs })
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+    throw new Error(err.error || `Agent ${agentType} failed`);
+  }
+  const data = await res.json();
+  if (data.error) throw new Error(data.error);
+  return data.result;
+}
+
+const AGENT_LABELS = {
+  intake: 'Intake', ohsa: 'OHSA', cba: 'CBA', esa: 'ESA',
+  ohrc: 'OHRC', evidence: 'Evidence', email: 'Correspondence',
+  mol: 'MOL', arbitration: 'Arbitration', qc: 'Quality Control', final: 'Final'
+};
+
+async function runPipeline() {
+  const problem = document.getElementById('f-problem').value.trim();
+  if (!problem) { showToast('Please describe the problem first', 'var(--amber)'); return; }
+
+  aborted = false;
+  allAgentOutputs = [];
+
+  const context = {
+    local: document.getElementById('f-local').value.trim(),
+    employer: document.getElementById('f-employer').value.trim(),
+    role: selectedRole,
+    caseHistory: document.getElementById('f-history').value.trim(),
+    keyPeople: document.getElementById('f-people').value.trim()
+  };
+
+  // Show pipeline UI
+  document.getElementById('run-btn').style.display = 'none';
+  document.getElementById('agent-section').style.display = 'block';
+  document.getElementById('final-section').style.display = 'none';
+  document.getElementById('agent-chips').innerHTML = '';
+  document.getElementById('agent-outputs').innerHTML = '';
+  document.getElementById('final-output').innerHTML = '';
+  STOP_BTN.classList.add('show');
+
+  // STEP 1: Intake
+  createChip('intake', AGENT_LABELS.intake);
+  setChipState('intake', 'running');
+  let intakeOutput = '';
+  try {
+    intakeOutput = await callAgent('intake', problem, context, null);
+    setChipState('intake', 'done');
+    createAgentOutputCard('intake', AGENT_LABELS.intake);
+    setAgentOutput('intake', intakeOutput);
+    allAgentOutputs.push({ label: AGENT_LABELS.intake, output: intakeOutput });
+  } catch (e) {
+    setChipState('intake', 'error');
+    showToast(`Intake agent error: ${e.message}`, 'var(--red)');
+    resetShield();
+    return;
+  }
+
+  if (aborted) { resetShield(); return; }
+
+  // Parse specialists
+  const specialistMatch = intakeOutput.match(/SPECIALISTS?:\s*([^\n]+)/i);
+  const ALL_SPECIALISTS = ['ohsa', 'cba', 'esa', 'ohrc', 'evidence', 'email', 'mol', 'arbitration'];
+  let specialists = [];
+  if (specialistMatch) {
+    specialists = specialistMatch[1].toLowerCase().match(/\b(ohsa|cba|esa|ohrc|evidence|email|mol|arbitration)\b/g) || [];
+    specialists = [...new Set(specialists)];
+  }
+  if (!specialists.length) specialists = ['ohsa', 'cba', 'evidence'];
+
+  // STEP 2: Specialists (parallel)
+  specialists.forEach(s => createChip(s, AGENT_LABELS[s] || s));
+  specialists.forEach(s => setChipState(s, 'running'));
+
+  const prevOutputs = `INTAKE:\n${intakeOutput}`;
+  const specialistResults = await Promise.all(
+    specialists.map(async s => {
+      if (aborted) return null;
+      try {
+        const result = await callAgent(s, problem, context, prevOutputs);
+        setChipState(s, 'done');
+        createAgentOutputCard(s, AGENT_LABELS[s] || s);
+        setAgentOutput(s, result);
+        return { key: s, label: AGENT_LABELS[s] || s, output: result };
+      } catch (e) {
+        setChipState(s, 'error');
+        return { key: s, label: AGENT_LABELS[s] || s, output: `Error: ${e.message}` };
+      }
+    })
+  );
+
+  if (aborted) { resetShield(); return; }
+
+  specialistResults.filter(Boolean).forEach(r => allAgentOutputs.push(r));
+
+  // Build combined previous outputs for QC
+  const allPrevious = allAgentOutputs.map(a => `${a.label.toUpperCase()}:\n${a.output}`).join('\n\n---\n\n');
+
+  // STEP 3: QC
+  createChip('qc', AGENT_LABELS.qc);
+  setChipState('qc', 'running');
+  let qcOutput = '';
+  try {
+    qcOutput = await callAgent('qc', problem, context, allPrevious);
+    setChipState('qc', 'done');
+    createAgentOutputCard('qc', AGENT_LABELS.qc);
+    setAgentOutput('qc', qcOutput);
+    allAgentOutputs.push({ label: AGENT_LABELS.qc, output: qcOutput });
+  } catch (e) {
+    setChipState('qc', 'error');
+    qcOutput = `QC error: ${e.message}`;
+  }
+
+  if (aborted) { resetShield(); return; }
+
+  // STEP 4: Final
+  createChip('final', AGENT_LABELS.final);
+  setChipState('final', 'running');
+  const finalPrev = allAgentOutputs.map(a => `${a.label.toUpperCase()}:\n${a.output}`).join('\n\n---\n\n');
+  let finalOutput = '';
+  try {
+    finalOutput = await callAgent('final', problem, context, finalPrev);
+    setChipState('final', 'done');
+    allAgentOutputs.push({ label: AGENT_LABELS.final, output: finalOutput });
+  } catch (e) {
+    setChipState('final', 'error');
+    showToast(`Final agent error: ${e.message}`, 'var(--red)');
+    STOP_BTN.classList.remove('show');
+    document.getElementById('run-btn').style.display = '';
+    return;
+  }
+
+  // Show final
+  STOP_BTN.classList.remove('show');
+  document.getElementById('final-output').innerHTML = renderMd(finalOutput);
+  document.getElementById('final-section').style.display = 'block';
+  document.getElementById('final-section').scrollIntoView({ behavior: 'smooth' });
+}
+
+// ── PDF EXPORT ────────────────────────────────────────────────────────────────
+
+document.getElementById('pdf-btn').addEventListener('click', () => {
+  const finalText = allAgentOutputs.find(a => a.label === AGENT_LABELS.final)?.output || '';
+  const problem = document.getElementById('f-problem').value.trim();
+  const date = new Date().toLocaleDateString('en-CA', { year:'numeric', month:'long', day:'numeric' });
+
+  if (typeof window.jspdf !== 'undefined') {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit:'mm', format:'a4' });
+    const w = 170;
+    let y = 20;
+
+    const addText = (text, size, bold, color) => {
+      doc.setFontSize(size);
+      doc.setFont('helvetica', bold ? 'bold' : 'normal');
+      doc.setTextColor(...(color || [10,22,40]));
+      const lines = doc.splitTextToSize(text, w);
+      if (y + lines.length * (size * 0.4) > 275) { doc.addPage(); y = 20; }
+      doc.text(lines, 20, y);
+      y += lines.length * (size * 0.45) + 1;
+    };
+
+    addText('WORKERSHIELD', 22, true, [10,22,40]);
+    addText('CONFIDENTIAL — UNION DOCUMENT', 9, true, [180,0,0]);
+    addText(`Generated: ${date}`, 9, false, [130,149,165]);
+    y += 4;
+    addText(`Local: ${document.getElementById('f-local').value}`, 9, false);
+    addText(`Employer: ${document.getElementById('f-employer').value}`, 9, false);
+    y += 4;
+    addText('PROBLEM:', 10, true);
+    addText(problem, 9, false, [50,60,70]);
+    y += 6;
+
+    allAgentOutputs.forEach(a => {
+      if (a.label === AGENT_LABELS.final) return;
+      if (!a.output?.trim()) return;
+      addText(`AGENT: ${a.label.toUpperCase()}`, 10, true, [10,22,40]);
+      const plain = a.output.replace(/#{1,3}\s/g,'').replace(/\*\*(.+?)\*\*/g,'$1').replace(/\*(.+?)\*/g,'$1');
+      addText(plain, 9, false, [50,60,70]);
+      y += 4;
+    });
+
+    y += 4;
+    addText('★ WORKERSHIELD FINAL RESPONSE', 13, true, [10,22,40]);
+    const plainFinal = finalText.replace(/#{1,3}\s/g,'').replace(/\*\*(.+?)\*\*/g,'$1').replace(/\*(.+?)\*/g,'$1');
+    addText(plainFinal, 10, false, [10,22,40]);
+
+    doc.setFontSize(8);
+    doc.setTextColor(130,149,165);
+    doc.text('Generated by WorkerShield — For union use only', 20, 287);
+
+    doc.save(`WorkerShield_Report_${new Date().toISOString().slice(0,10)}.pdf`);
+  } else {
+    // Fallback: open print dialog
+    const win = window.open('', '_blank');
+    if (!win) { showToast('Pop-up blocked', 'var(--amber)'); return; }
+    win.document.write(`<!doctype html><html><head><title>WorkerShield Report</title><style>body{font-family:sans-serif;padding:20px;color:#0a1628}h1{font-size:22px;margin-bottom:4px}h2{font-size:13px;text-transform:uppercase;color:#8a95a5;letter-spacing:1px;margin:16px 0 4px}pre{white-space:pre-wrap;font-family:inherit;font-size:12px}p{margin:4px 0}</style></head><body>`);
+    win.document.write(`<h1>WORKERSHIELD REPORT</h1><p style="color:red;font-weight:700">CONFIDENTIAL — UNION DOCUMENT</p><p>${date}</p><hr>`);
+    win.document.write(`<h2>Problem</h2><pre>${problem}</pre>`);
+    allAgentOutputs.forEach(a => {
+      win.document.write(`<h2>AGENT: ${a.label.toUpperCase()}</h2><pre>${a.output || ''}</pre>`);
+    });
+    win.document.write('</body></html>');
+    win.document.close();
+    win.focus();
+    win.print();
+  }
+});
+
+// ── COPY FULL REPORT ──────────────────────────────────────────────────────────
+
+document.getElementById('copy-btn').addEventListener('click', async () => {
+  const problem = document.getElementById('f-problem').value.trim();
+  const date = new Date().toLocaleString('en-CA');
+  const lines = [
+    'WORKERSHIELD REPORT',
+    'CONFIDENTIAL — UNION DOCUMENT',
+    `Generated: ${date}`,
+    '',
+    `Local: ${document.getElementById('f-local').value}`,
+    `Employer: ${document.getElementById('f-employer').value}`,
+    `Role: ${selectedRole}`,
+    '',
+    'PROBLEM:',
+    problem,
+    ''
+  ];
+  allAgentOutputs.forEach(a => {
+    lines.push('='.repeat(50));
+    lines.push(`AGENT: ${a.label.toUpperCase()}`);
+    lines.push('='.repeat(50));
+    lines.push(a.output?.trim() || '');
+    lines.push('');
+  });
+  lines.push('---');
+  lines.push('Generated by WorkerShield — Confidential Union Document');
+
+  try {
+    await navigator.clipboard.writeText(lines.join('\n'));
+    showToast('✓ FULL REPORT COPIED');
+  } catch {
+    showToast('Copy failed', 'var(--red)');
+  }
+});
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+
+// Check deadline alerts on load (after brief delay to let grievances load)
+setTimeout(checkDeadlines, 1000);
+
+</script>
+</body>
+</html>
