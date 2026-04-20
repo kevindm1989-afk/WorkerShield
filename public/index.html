@@ -1262,7 +1262,7 @@ const WORKER_URL = 'https://workershield.kevindm1989.workers.dev';
 
 if ('serviceWorker' in navigator) {
   const swCode = `
-const CACHE = 'workershield-v4';
+const CACHE = 'workershield-v5';
 const SHELL = ['./', './index.html'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL).catch(() => {})));
@@ -1340,9 +1340,13 @@ window.addEventListener('beforeinstallprompt', e => {
 });
 
 // Auto-show shortly after page loads
-window.addEventListener('load', () => {
-  setTimeout(() => openInstallModal(false), 1500);
-});
+// (Script is at bottom of body so DOM is ready — don't rely on load event
+//  which may have already fired when service worker serves from cache)
+if (document.readyState === 'complete') {
+  setTimeout(() => openInstallModal(false), 800);
+} else {
+  window.addEventListener('load', () => setTimeout(() => openInstallModal(false), 800));
+}
 
 // Header button always opens the modal (even after dismissal)
 const headerInstallBtn = document.getElementById('header-install-btn');
