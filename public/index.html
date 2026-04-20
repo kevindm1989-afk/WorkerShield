@@ -1227,7 +1227,7 @@ const WORKER_URL = 'https://workershield.kevindm1989.workers.dev';
 
 if ('serviceWorker' in navigator) {
   const swCode = `
-const CACHE = 'workershield-v1';
+const CACHE = 'workershield-v2';
 const SHELL = ['./', './index.html'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL).catch(() => {})));
@@ -1257,11 +1257,11 @@ const installOverlay = document.getElementById('install-overlay');
 
 function dismissInstall() {
   installOverlay.classList.remove('show');
-  localStorage.setItem('ws_install_dismissed', '1');
+  localStorage.setItem('ws_install_dismissed_v2', '1');
 }
 
 function showInstallModal() {
-  if (localStorage.getItem('ws_install_dismissed')) return;
+  if (localStorage.getItem('ws_install_dismissed_v2')) return;
   if (window.navigator.standalone) return; // already installed on iOS
 
   const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.navigator.standalone;
