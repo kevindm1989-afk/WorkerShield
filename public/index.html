@@ -65,8 +65,8 @@
       position: relative;
     }
 
-    /* ── BANNERS ── */
-    #deadline-banner, #install-banner {
+    /* ── DEADLINE BANNER ── */
+    #deadline-banner {
       display: none;
       padding: 10px 16px;
       font-family: 'IBM Plex Mono', monospace;
@@ -74,43 +74,154 @@
       font-weight: 700;
       letter-spacing: 0.5px;
       line-height: 1.4;
-    }
-    #deadline-banner {
       background: var(--red);
       color: #fff;
     }
     #deadline-banner.show { display: block; }
-    #install-banner {
+
+    /* ── INSTALL MODAL ── */
+    #install-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.82);
+      z-index: 400;
+      align-items: flex-end;
+      justify-content: center;
+      padding-bottom: calc(var(--safe-bottom) + 0px);
+    }
+    #install-overlay.show { display: flex; }
+    #install-modal {
+      background: var(--navy2);
+      border: 2px solid var(--gold);
+      border-radius: 6px 6px 0 0;
+      width: 100%;
+      max-width: 600px;
+      padding: 0 0 calc(var(--safe-bottom) + 24px);
+      overflow: hidden;
+    }
+    .install-modal-bar {
       background: var(--gold);
-      color: var(--navy);
+      padding: 14px 18px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 10px;
     }
-    #install-banner.show { display: flex; }
-    #install-banner span { flex: 1; }
-    .banner-btn {
-      background: var(--navy);
-      color: var(--gold);
+    .install-modal-bar h2 {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 20px;
+      letter-spacing: 2.5px;
+      color: var(--navy);
+      margin: 0;
+    }
+    .install-modal-close {
+      background: none;
       border: none;
-      font-family: 'IBM Plex Mono', monospace;
-      font-size: 10px;
-      font-weight: 700;
-      letter-spacing: 1px;
-      padding: 6px 10px;
+      color: var(--navy);
+      font-size: 22px;
       cursor: pointer;
-      border-radius: 2px;
-      white-space: nowrap;
+      line-height: 1;
+      padding: 0 2px;
+      font-weight: 700;
     }
-    .banner-dismiss {
-      background: transparent;
+    .install-modal-body { padding: 20px 20px 0; }
+    .install-modal-body p {
+      font-size: 13px;
+      color: var(--text-dim);
+      margin-bottom: 18px;
+      line-height: 1.5;
+    }
+    .install-step {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      margin-bottom: 16px;
+    }
+    .install-step-num {
+      width: 28px;
+      height: 28px;
+      background: var(--gold);
+      color: var(--navy);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 12px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+    .install-step-text {
+      font-size: 13px;
+      color: var(--text);
+      line-height: 1.5;
+      padding-top: 4px;
+    }
+    .install-step-text strong { color: var(--gold); }
+    .install-icon-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 4px;
+    }
+    .install-share-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      background: #007aff;
+      border-radius: 6px;
+      font-size: 18px;
+      color: #fff;
+    }
+    .install-addhs-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      background: var(--navy3);
+      border: 1.5px solid var(--border);
+      border-radius: 6px;
+      font-size: 16px;
+    }
+    .install-modal-actions { padding: 20px 20px 0; display: flex; flex-direction: column; gap: 10px; }
+    #install-android-btn {
+      width: 100%;
+      padding: 15px;
+      background: var(--gold);
       color: var(--navy);
       border: none;
-      font-size: 18px;
+      border-radius: 3px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
       cursor: pointer;
-      padding: 0 4px;
-      font-family: monospace;
+    }
+    #install-not-now {
+      width: 100%;
+      padding: 12px;
+      background: transparent;
+      color: var(--text-dim);
+      border: 1.5px solid var(--border);
+      border-radius: 3px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      cursor: pointer;
+    }
+    .ios-arrow {
+      text-align: center;
+      font-size: 28px;
+      margin-top: 4px;
+      animation: bounce 1.5s infinite;
+    }
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(6px); }
     }
 
     /* ── TABS CONTENT ── */
@@ -750,11 +861,58 @@
   <!-- Deadline alert banner -->
   <div id="deadline-banner"></div>
 
-  <!-- Install banner -->
-  <div id="install-banner" class="install-banner">
-    <span>📱 Add WorkerShield to your home screen</span>
-    <button class="banner-btn" id="install-btn">ADD</button>
-    <button class="banner-dismiss" id="install-dismiss">✕</button>
+  <!-- Install modal (Android + iOS) -->
+  <div id="install-overlay">
+    <div id="install-modal">
+      <div class="install-modal-bar">
+        <h2>⚡ INSTALL WORKERSHIELD</h2>
+        <button class="install-modal-close" id="install-close">✕</button>
+      </div>
+      <!-- Android content -->
+      <div id="install-android" style="display:none">
+        <div class="install-modal-body">
+          <p>Install WorkerShield on your home screen for instant access — works offline too.</p>
+        </div>
+        <div class="install-modal-actions">
+          <button id="install-android-btn">📲 ADD TO HOME SCREEN</button>
+          <button id="install-not-now">NOT NOW</button>
+        </div>
+      </div>
+      <!-- iOS content -->
+      <div id="install-ios" style="display:none">
+        <div class="install-modal-body">
+          <p>Install WorkerShield on your iPhone or iPad:</p>
+          <div class="install-step">
+            <div class="install-step-num">1</div>
+            <div class="install-step-text">
+              Tap the <strong>Share button</strong> at the bottom of Safari
+              <div class="install-icon-row">
+                <div class="install-share-icon">⬆</div>
+                <span style="font-size:11px;color:var(--text-dim)">Bottom centre of Safari</span>
+              </div>
+            </div>
+          </div>
+          <div class="install-step">
+            <div class="install-step-num">2</div>
+            <div class="install-step-text">
+              Scroll down and tap <strong>"Add to Home Screen"</strong>
+              <div class="install-icon-row">
+                <div class="install-addhs-icon">＋</div>
+                <span style="font-size:11px;color:var(--text-dim)">Add to Home Screen</span>
+              </div>
+            </div>
+          </div>
+          <div class="install-step">
+            <div class="install-step-num">3</div>
+            <div class="install-step-text">Tap <strong>"Add"</strong> in the top right corner</div>
+          </div>
+          <div class="ios-arrow">↓</div>
+        </div>
+        <div class="install-modal-actions">
+          <button id="install-not-now-ios">GOT IT — CLOSE</button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- Tab content -->
@@ -1092,30 +1250,68 @@ self.addEventListener('fetch', e => {
   navigator.serviceWorker.register(URL.createObjectURL(swBlob)).catch(() => {});
 }
 
-// ── INSTALL BANNER ───────────────────────────────────────────────────────────
+// ── INSTALL MODAL ────────────────────────────────────────────────────────────
 
 let deferredPrompt = null;
-const installBanner = document.getElementById('install-banner');
-const installBtn = document.getElementById('install-btn');
-const installDismiss = document.getElementById('install-dismiss');
+const installOverlay = document.getElementById('install-overlay');
 
+function dismissInstall() {
+  installOverlay.classList.remove('show');
+  localStorage.setItem('ws_install_dismissed', '1');
+}
+
+function showInstallModal() {
+  if (localStorage.getItem('ws_install_dismissed')) return;
+  if (window.navigator.standalone) return; // already installed on iOS
+
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.navigator.standalone;
+  const isAndroid = /android/i.test(navigator.userAgent);
+
+  if (isIOS) {
+    document.getElementById('install-ios').style.display = '';
+    installOverlay.classList.add('show');
+  } else if (deferredPrompt) {
+    document.getElementById('install-android').style.display = '';
+    installOverlay.classList.add('show');
+  }
+}
+
+// Android: capture the native install prompt
 window.addEventListener('beforeinstallprompt', e => {
   e.preventDefault();
   deferredPrompt = e;
-  if (!localStorage.getItem('ws_install_dismissed')) {
-    installBanner.classList.add('show');
+  // Show after a short delay so the page loads first
+  setTimeout(showInstallModal, 2500);
+});
+
+// iOS: show after delay if in Safari and not already installed
+(function() {
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.navigator.standalone;
+  const isSafari = /safari/i.test(navigator.userAgent) && !/chrome|crios|fxios/i.test(navigator.userAgent);
+  if (isIOS && isSafari) {
+    setTimeout(showInstallModal, 2500);
+  }
+})();
+
+// Android install button
+document.getElementById('install-android-btn').addEventListener('click', async () => {
+  if (deferredPrompt) {
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    deferredPrompt = null;
+    if (outcome === 'accepted') localStorage.setItem('ws_install_dismissed', '1');
+    installOverlay.classList.remove('show');
   }
 });
 
-installBtn.addEventListener('click', async () => {
-  if (deferredPrompt) {
-    deferredPrompt.prompt();
-    installBanner.classList.remove('show');
-  }
-});
-installDismiss.addEventListener('click', () => {
-  installBanner.classList.remove('show');
-  localStorage.setItem('ws_install_dismissed', '1');
+// Close / dismiss buttons
+document.getElementById('install-close').addEventListener('click', dismissInstall);
+document.getElementById('install-not-now').addEventListener('click', dismissInstall);
+document.getElementById('install-not-now-ios').addEventListener('click', dismissInstall);
+
+// Tap outside modal to dismiss
+installOverlay.addEventListener('click', e => {
+  if (e.target === installOverlay) dismissInstall();
 });
 
 // ── TAB ROUTING ──────────────────────────────────────────────────────────────
