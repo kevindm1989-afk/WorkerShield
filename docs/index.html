@@ -2283,10 +2283,10 @@ async function runPipeline() {
 
   // Parse specialists
   const specialistMatch = intakeOutput.match(/SPECIALISTS?:\s*([^\n]+)/i);
-  const ALL_SPECIALISTS = ['ohsa', 'cba', 'esa', 'ohrc', 'wsib', 'evidence', 'email', 'mol', 'arbitration'];
+  const ALL_SPECIALISTS = ['ohsa', 'cba', 'esa', 'ohrc', 'evidence', 'email', 'mol', 'arbitration'];
   let specialists = [];
   if (specialistMatch) {
-    specialists = specialistMatch[1].toLowerCase().match(/\b(ohsa|cba|esa|ohrc|wsib|evidence|email|mol|arbitration)\b/g) || [];
+    specialists = specialistMatch[1].toLowerCase().match(/\b(ohsa|cba|esa|ohrc|evidence|email|mol|arbitration)\b/g) || [];
     specialists = [...new Set(specialists)];
   }
   if (!specialists.length) specialists = ['ohsa', 'cba', 'evidence'];
@@ -2316,10 +2316,28 @@ async function runPipeline() {
 
   specialistResults.filter(Boolean).forEach(r => allAgentOutputs.push(r));
 
+  // STEP 3: WSIB (sequential, always runs)
+  const wsibPrevious = allAgentOutputs.map(a => `${a.label.toUpperCase()}:\n${a.output}`).join('\n\n---\n\n');
+  createChip('wsib', AGENT_LABELS.wsib);
+  setChipState('wsib', 'running');
+  let wsibOutput = '';
+  try {
+    wsibOutput = await callAgent('wsib', problem, context, wsibPrevious);
+    setChipState('wsib', 'done');
+    createAgentOutputCard('wsib', AGENT_LABELS.wsib);
+    setAgentOutput('wsib', wsibOutput);
+    allAgentOutputs.push({ label: AGENT_LABELS.wsib, output: wsibOutput });
+  } catch (e) {
+    setChipState('wsib', 'error');
+    wsibOutput = `WSIB error: ${e.message}`;
+  }
+
+  if (aborted) { resetShield(); return; }
+
   // Build combined previous outputs for QC
   const allPrevious = allAgentOutputs.map(a => `${a.label.toUpperCase()}:\n${a.output}`).join('\n\n---\n\n');
 
-  // STEP 3: QC
+  // STEP 4: QC
   createChip('qc', AGENT_LABELS.qc);
   setChipState('qc', 'running');
   let qcOutput = '';
@@ -2336,7 +2354,7 @@ async function runPipeline() {
 
   if (aborted) { resetShield(); return; }
 
-  // STEP 4: Final
+  // STEP 5: Final
   createChip('final', AGENT_LABELS.final);
   setChipState('final', 'running');
   const finalPrev = allAgentOutputs.map(a => `${a.label.toUpperCase()}:\n${a.output}`).join('\n\n---\n\n');
