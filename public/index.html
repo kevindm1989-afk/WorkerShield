@@ -14,6 +14,9 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="WorkerShield">
   <link rel="manifest" id="manifest-link">
+  <!-- App icon (gold W badge — matches the in-app header) -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='96' fill='%23d4a017'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dominant-baseline='central' font-family='Arial Black,sans-serif' font-weight='900' font-size='340' fill='%230a1628'%3EW%3C/text%3E%3C/svg%3E">
+  <link rel="apple-touch-icon" href="data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='96' fill='%23d4a017'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dominant-baseline='central' font-family='Arial Black,sans-serif' font-weight='900' font-size='340' fill='%230a1628'%3EW%3C/text%3E%3C/svg%3E">
 
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1237,8 +1240,18 @@ const WORKER_URL = 'https://workershield.kevindm1989.workers.dev';
     theme_color: '#0a1628',
     background_color: '#0a1628',
     icons: [
-      { src: 'https://via.placeholder.com/192x192/0a1628/d4a017?text=WS', sizes: '192x192', type: 'image/png' },
-      { src: 'https://via.placeholder.com/512x512/0a1628/d4a017?text=WS', sizes: '512x512', type: 'image/png' }
+      {
+        src: "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='96' fill='%23d4a017'/><text x='50%25' y='50%25' text-anchor='middle' dominant-baseline='central' font-family='Arial Black,sans-serif' font-weight='900' font-size='340' fill='%230a1628'>W</text></svg>",
+        sizes: 'any',
+        type: 'image/svg+xml',
+        purpose: 'any'
+      },
+      {
+        src: "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' fill='%23d4a017'/><text x='50%25' y='50%25' text-anchor='middle' dominant-baseline='central' font-family='Arial Black,sans-serif' font-weight='900' font-size='280' fill='%230a1628'>W</text></svg>",
+        sizes: 'any',
+        type: 'image/svg+xml',
+        purpose: 'maskable'
+      }
     ]
   };
   const blob = new Blob([JSON.stringify(manifest)], { type: 'application/manifest+json' });
@@ -1249,7 +1262,7 @@ const WORKER_URL = 'https://workershield.kevindm1989.workers.dev';
 
 if ('serviceWorker' in navigator) {
   const swCode = `
-const CACHE = 'workershield-v3';
+const CACHE = 'workershield-v4';
 const SHELL = ['./', './index.html'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL).catch(() => {})));
