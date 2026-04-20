@@ -1,0 +1,23 @@
+Fix all 10 of the following issues in the WorkerShield project. Do them all in one pass:
+
+1. SERVICE WORKER — Create sw.js in the project root with a proper PWA cache-first service worker. Cache these files: './', './index.html', './manifest.json', './icon-192.png', './icon-512.png'. Cache name should be 'workershield-v1'. Also register the service worker in index.html just before the closing </body> tag.
+
+2. CORS LOCK — In worker.js, change the Access-Control-Allow-Origin header from '*' to 'https://kevindm1989-afk.github.io'. Make sure it still works for OPTIONS preflight requests.
+
+3. README — Replace the contents of README.md with a proper description. Include: app name (WorkerShield), what it does (Ontario labour defense AI multi-agent PWA for Unifor Local 1285 union stewards and JHSC co-chairs), the tech stack (Cloudflare Worker, Anthropic Claude API, GitHub data storage, PWA), the agents it includes (Intake, OHSA, CBA, ESA, OHRC, Evidence, Email, MOL, Arbitration, QC, Final), and a confidentiality notice that this is for union use only.
+
+4. WSIB AGENT — In worker.js, add a new 'wsib' entry to the AGENT_PROMPTS object. The prompt should instruct the agent to analyze WSIB/WSIA issues including: Form 7 obligations, lost-time claims, return-to-work obligations under WSIA s.40-41, NEER/CAD-7 implications, worker rights under WSIA, and employer obligations. Also add 'wsib' to the AGENT_LABELS object in index.html with the label 'WSIB'. Also add 'wsib' to the ALL_SPECIALISTS array in the runPipeline function in index.html.
+
+5. ENV VALIDATION — In worker.js, at the start of the fetch handler (after the OPTIONS check), add a validation block that checks if env.ANTHROPIC_API_KEY, env.GITHUB_TOKEN, env.GITHUB_OWNER, and env.GITHUB_DATA_REPO are all set. If any are missing, return a 500 JSON response listing which variables are missing.
+
+6. RATE LIMITING — In worker.js, add simple IP-based rate limiting using a Map stored in globalThis. Allow maximum 30 requests per IP per hour. If exceeded, return a 429 JSON response with message 'Rate limit exceeded. Try again later.'
+
+7. MANIFEST EXTRAS — In manifest.json, add these three fields: "lang": "en-CA", "categories": ["productivity", "business"], "dir": "ltr"
+
+8. RIGHT TO REFUSE WIZARD — In index.html, add a new tab to the bottom tab bar called 'REFUSE' with a shield or stop icon. The tab panel should contain a step-by-step Right to Refuse wizard based on OHSA ss.43-45 with these steps: Step 1 (Have you identified an unsafe condition?), Step 2 (Have you reported it to your supervisor?), Step 3 (Has the supervisor investigated and the situation is still unsafe?), Step 4 (Has the JHSC worker rep been called?), Step 5 (Has a MOL inspector been called?). Each step should have YES and NO buttons that guide the user through the correct next action. Style it to match the existing navy/gold theme.
+
+9. DEADLINE CALCULATOR — In index.html, add a section inside the existing Grievances tab (or the new REFUSE tab) called 'Article 4 Deadline Calculator'. It should have a date input for the incident date. When submitted it should calculate and display all Article 4 deadlines: Complaint Stage deadline (5 working days from incident), Step 1 filing deadline (5 working days after supervisor reply = 7 working days from incident), Step 1 meeting deadline (3 working days after Step 1 filing), Step 1 decision deadline (5 working days after Step 1 meeting), Step 2 filing deadline (5 working days after Step 1 decision), Step 2 decision deadline (10 working days after Step 2 meeting), Arbitration notice deadline (10 working days after Step 2 decision). Working days = Monday to Friday, skip weekends. Display each deadline with a label and date, colour coded red if under 3 days away, amber if under 7 days, green if more than 7 days.
+
+10. CONFIDENTIALITY SPLASH — In index.html, add a one-time modal that shows on first load. It should have the WorkerShield logo/title, the text 'This application contains confidential union documentation protected by solicitor-client privilege. Authorized union personnel only. Do not share access or screenshots.' and a single button 'I UNDERSTAND — ENTER'. Use localStorage key 'ws_accepted' to track if the user has already accepted. Style it to match the existing navy/gold theme with a full-screen overlay.
+
+After making all changes, confirm which files were modified.
