@@ -8,7 +8,7 @@
   <!-- PWA meta -->
   <meta name="theme-color" content="#0a1628">
   <meta name="application-name" content="WorkerShield">
-  <meta name="description" content="Ontario labour defense AI for Unifor Local 1285">
+  <meta name="description" content="Ontario labour defense AI for union stewards and JHSC co-chairs">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -1217,11 +1217,11 @@
       <div class="form-wrap" id="shield-form">
         <div class="field">
           <label>Local / Union</label>
-          <input type="text" id="f-local" value="Unifor Local 1285">
+          <input type="text" id="f-local" value="">
         </div>
         <div class="field">
           <label>Employer</label>
-          <input type="text" id="f-employer" value="Saputo Dairy Products Canada G.P.">
+          <input type="text" id="f-employer" value="">
         </div>
         <div class="field">
           <label>Case History (prior incidents, discipline, dates)</label>
@@ -1609,7 +1609,7 @@
     <!-- Sign-in view -->
     <div id="login-view">
       <div class="login-logo">🛡️ WORKERSHIELD</div>
-      <div class="login-sub">Unifor Local 1285 — Restricted Access</div>
+      <div class="login-sub">Restricted Access</div>
       <div class="login-hint">Authorized stewards and JHSC co-chairs only. Enter your access code to continue.</div>
       <div id="login-error" class="login-error"></div>
       <input type="password" id="login-code" placeholder="ACCESS CODE" autocomplete="current-password" spellcheck="false">
@@ -1645,7 +1645,7 @@
 <div id="ws-splash" class="ws-splash" style="display:none">
   <div class="ws-splash-card">
     <div class="ws-splash-logo">🛡️ WORKERSHIELD</div>
-    <div class="ws-splash-sub">Ontario Labour Defense — Unifor Local 1285</div>
+    <div class="ws-splash-sub">Ontario Labour Defense</div>
     <div class="ws-splash-text">
       This application contains confidential union documentation protected by solicitor-client privilege. Authorized union personnel only. Do not share access or screenshots.
     </div>
@@ -2229,7 +2229,7 @@ document.getElementById('inc-export-btn').addEventListener('click', () => {
     doc.text('WORKERSHIELD — INCIDENT LOG', 20, y);
     y += 8;
     doc.setFontSize(9);
-    doc.text(`Unifor Local 1285 · Saputo Dairy Products Canada G.P. · Generated ${new Date().toLocaleDateString('en-CA')}`, 20, y);
+    doc.text(`WorkerShield · Generated ${new Date().toLocaleDateString('en-CA')}`, 20, y);
     y += 6;
     doc.setFontSize(9);
     doc.setTextColor(180,0,0);
