@@ -505,6 +505,35 @@ export default {
     const url = new URL(request.url);
     const path = url.pathname;
 
+    // ── ACCESS REQUEST (public — no token required) ──
+    if (path === '/api/access-request' && request.method === 'POST') {
+      try {
+        const body = await request.json();
+        const { name, email, jobTitle, message } = body;
+        if (!name || !email) {
+          return new Response(JSON.stringify({ error: 'Name and email are required.' }), { status: 400, headers: CORS });
+        }
+        const record = {
+          id: `REQ-${Date.now()}`,
+          timestamp: new Date().toISOString(),
+          name: String(name).slice(0, 100),
+          email: String(email).slice(0, 200),
+          jobTitle: String(jobTitle || '').slice(0, 100),
+          message: String(message || '').slice(0, 500),
+          status: 'pending'
+        };
+        const filename = `access-requests/${record.id}.json`;
+        const ok = await githubWriteFile(env, filename, record);
+        if (ok) {
+          return new Response(JSON.stringify({ success: true }), { headers: CORS });
+        } else {
+          return new Response(JSON.stringify({ error: 'Failed to save request.' }), { status: 500, headers: CORS });
+        }
+      } catch (err) {
+        return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: CORS });
+      }
+    }
+
     // ── AUTH ENDPOINT (public — no token required) ──
     if (path === '/api/auth' && request.method === 'POST') {
       try {
